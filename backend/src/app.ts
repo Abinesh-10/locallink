@@ -1,5 +1,6 @@
 import express, { Express } from 'express';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { env } from './config/env';
 import { helmetMiddleware, corsMiddleware } from './middleware/helmet';
 import { globalRateLimiter } from './middleware/rateLimit';
@@ -30,6 +31,7 @@ export function createApp(): Express {
 
   app.set('trust proxy', 1); // needed for correct req.ip behind Render/Railway's proxy
 
+  app.use(compression()); // gzip/deflate all responses — biggest bandwidth win for list endpoints
   app.use(helmetMiddleware);
   app.use(corsMiddleware);
   app.use(express.json({ limit: '2mb' }));
