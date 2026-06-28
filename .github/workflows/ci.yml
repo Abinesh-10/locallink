@@ -1,16 +1,5 @@
-name: CI
+name: CI / CD
 
-# Runs on every push and PR to main. Each job is independent so a frontend
-# failure doesn't mask a backend pass (and vice versa) in the checks UI.
-#
-# NOTE on npm install vs npm ci: this uses `npm install` because the repo
-# doesn't commit package-lock.json files yet. Once you run `npm install`
-# locally and commit the resulting backend/package-lock.json and
-# frontend/package-lock.json, switch these to `npm ci` (faster, fully
-# reproducible) and re-add `cache: npm` with `cache-dependency-path`
-# pointing at the lockfiles. Left as `npm install` here so the pipeline
-# actually runs green on a fresh clone rather than failing on a missing
-# lockfile.
 on:
   push:
     branches: [main]
@@ -18,6 +7,7 @@ on:
     branches: [main]
 
 jobs:
+  # ── Backend: lint → typecheck → test → build ─────────────────────────
   backend:
     name: Backend (lint, typecheck, test, build)
     runs-on: ubuntu-latest
@@ -26,22 +16,28 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
       - name: Lint
         run: npm run lint
+
       - name: Typecheck
-        # tsc --noEmit typechecks without producing output; the build step
-        # below does the real emit. Splitting them makes a type error show
-        # up as a distinct, clearly-labelled failure.
         run: npx tsc --noEmit -p tsconfig.json
+
       - name: Test
         run: npm test
+
       - name: Build
         run: npm run build
 
+  # ── Frontend: lint → typecheck → build ───────────────────────────────
   frontend:
     name: Frontend (lint, typecheck, build)
     runs-on: ubuntu-latest
@@ -50,13 +46,60 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
       - name: Lint
         run: npm run lint
+
       - name: Build
-        # `npm run build` is `tsc -b && vite build`, so this covers both the
-        # typecheck and the production bundle in one step.
+        # tsc -b + vite build covers typecheck + production bundle in one step
         run: npm run build
+
+  # ── Deploy backend to Railway (push to main only) ────────────────────
+  # Requires GitHub secret: RAILWAY_TOKEN
+  # Get it from: railway.app → Account Settings → Tokens
+  deploy-backend:
+    name: Deploy Backend → Railway
+    needs: backend
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        working-directory: backend
+        run: railway up --service backend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  # ── Deploy frontend to Vercel (push to main only) ────────────────────
+  # Requires GitHub secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+  # Get them from: vercel.com → Settings → Tokens / Project Settings
+  deploy-frontend:
+    name: Deploy Frontend → Vercel
+    needs: frontend
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy
+        working-directory: frontend
+        run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
