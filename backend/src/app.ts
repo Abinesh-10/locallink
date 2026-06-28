@@ -4,6 +4,7 @@ import compression from 'compression';
 import { env } from './config/env';
 import { helmetMiddleware, corsMiddleware } from './middleware/helmet';
 import { globalRateLimiter } from './middleware/rateLimit';
+import { requestLogger } from './middleware/requestLogger';
 import { notFoundHandler, errorHandler } from './middleware/error';
 import { checkDbConnection } from './config/db';
 
@@ -31,6 +32,7 @@ export function createApp(): Express {
 
   app.set('trust proxy', 1); // needed for correct req.ip behind Render/Railway's proxy
 
+  app.use(requestLogger);  // attach X-Request-ID and log every HTTP transaction
   app.use(compression()); // gzip/deflate all responses — biggest bandwidth win for list endpoints
   app.use(helmetMiddleware);
   app.use(corsMiddleware);
