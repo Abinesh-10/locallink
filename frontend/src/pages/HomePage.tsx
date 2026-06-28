@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Hammer, PackageSearch, ShoppingBag, HeartHandshake, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { SosButton } from '@/features/community/components/SosButton';
 
 const CARDS = [
   { key: 'cardHire', icon: Hammer, to: '/hire', color: 'bg-brand-50 text-brand-700', enabled: true },
@@ -36,17 +37,18 @@ export function HomePage() {
               className={`flex flex-col items-start gap-3 rounded-lg p-4 text-left transition-transform active:scale-[0.98] ${color} ${
                 idx === CARDS.length - 1 ? 'col-span-2' : ''
               } ${!enabled ? 'opacity-60' : ''}`}
-              // All 5 modules (Phases 2-6: Hire, Rent, Buy & Sell, Community
-              // Help, Learn) are built and navigate. The enabled/disabled
-              // flag is kept on each card definition even though every
-              // card is now true, since it documents intent cheaply and
-              // costs nothing to leave in place.
               disabled={!enabled}
             >
               <Icon className="h-6 w-6" />
               <span className="font-medium">{t(`home.${key}`)}</span>
             </button>
           ))}
+        </div>
+
+        {/* Emergency SOS — placed on the home screen so it's reachable in
+            one tap, not buried inside the Community section. */}
+        <div className="mt-5">
+          <SosButton />
         </div>
       </div>
     </div>
