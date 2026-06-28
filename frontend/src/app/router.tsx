@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { ProtectedRoute } from './ProtectedRoute';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
@@ -59,6 +60,9 @@ import { AdminCategoriesPage } from '@/pages/admin/AdminCategoriesPage';
 import { AdminAnalyticsPage } from '@/pages/admin/AdminAnalyticsPage';
 
 const router = createBrowserRouter([
+  // Catch-all — must be first so React Router evaluates specific routes before it
+  { path: '*', element: <NotFoundPage /> },
+
   // Public auth routes
   { path: '/auth/login', element: <LoginPage /> },
   { path: '/auth/register', element: <RegisterPage /> },
