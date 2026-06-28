@@ -1,0 +1,62 @@
+name: CI
+
+# Runs on every push and PR to main. Each job is independent so a frontend
+# failure doesn't mask a backend pass (and vice versa) in the checks UI.
+#
+# NOTE on npm install vs npm ci: this uses `npm install` because the repo
+# doesn't commit package-lock.json files yet. Once you run `npm install`
+# locally and commit the resulting backend/package-lock.json and
+# frontend/package-lock.json, switch these to `npm ci` (faster, fully
+# reproducible) and re-add `cache: npm` with `cache-dependency-path`
+# pointing at the lockfiles. Left as `npm install` here so the pipeline
+# actually runs green on a fresh clone rather than failing on a missing
+# lockfile.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        # tsc --noEmit typechecks without producing output; the build step
+        # below does the real emit. Splitting them makes a type error show
+        # up as a distinct, clearly-labelled failure.
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  frontend:
+    name: Frontend (lint, typecheck, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        # `npm run build` is `tsc -b && vite build`, so this covers both the
+        # typecheck and the production bundle in one step.
+        run: npm run build

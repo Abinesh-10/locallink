@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: locallink_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: locallink
+      POSTGRES_PASSWORD: locallink
+      POSTGRES_DB: locallink
+    ports:
+      - '5432:5432'
+    volumes:
+      - locallink_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U locallink']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: locallink_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://locallink:locallink@postgres:5432/locallink
+    ports:
+      - '4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  locallink_pgdata:
